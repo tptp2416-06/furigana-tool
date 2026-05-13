@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Furigana Tool</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0f1117;
+      --bg-secondary: #161b22;
+      --bg-input: #0d1117;
+      --border: #21262d;
+      --border-active: #1f6feb;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #484f58;
+      --accent: #1f6feb;
+      --accent-glow: #1f6feb15;
+      --error: #f85149;
+      --error-bg: #da363415;
+      --error-border: #da363444;
+      --success: #3fb950;
+      --success-bg: #23862615;
+      --success-border: #238636;
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+      --font-jp: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg-primary);
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+    }
+
+    textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    textarea::placeholder { color: var(--text-muted); }
+    textarea { font-family: var(--font-jp), var(--font-mono); }
+
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+
+    /* --- Header --- */
+    .header {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 24px;
+      background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+    }
+    .header-inner {
+      max-width: 960px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-icon { font-size: 24px; }
+    .header h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+    .header p {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* --- Container --- */
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 24px 48px;
+    }
+
+    /* --- Setup Banner --- */
+    .setup-banner {
+      padding: 16px 20px;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+    .setup-banner.connected {
+      background: var(--success-bg);
+      border-color: var(--success-border);
+    }
+    .setup-banner label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .setup-row {
+      display: flex;
+      gap: 8px;
+    }
+    .setup-row input {
+      flex: 1;
+      padding: 8px 12px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 13px;
+    }
+    .setup-row input:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .setup-row button {
+      padding: 8px 16px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .setup-row button:hover { border-color: var(--accent); color: var(--accent); }
+    .setup-status {
+      font-size: 11px;
+      margin-top: 8px;
+    }
+    .setup-status.ok { color: var(--success); }
+    .setup-status.err { color: var(--error); }
+
+    /* --- Mode Selector --- */
+    .modes {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 640px) {
+      .modes { grid-template-columns: repeat(2, 1fr); }
+    }
+    .mode-btn {
+      padding: 12px 8px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+      color: var(--text-secondary);
+      transition: all 0.15s;
+    }
+    .mode-btn:hover { transform: translateY(-1px); border-color: var(--text-muted); }
+    .mode-btn:active { transform: translateY(0); }
+    .mode-btn.active {
+      background: var(--accent-glow);
+      border-color: var(--accent);
+      color: #58a6ff;
+    }
+    .mode-btn .icon { font-size: 20px; margin-bottom: 4px; }
+    .mode-btn .label { font-size: 11px; font-weight: 600; line-height: 1.3; }
+    .mode-btn .desc {
+      font-size: 10px;
+      margin-top: 4px;
+      color: var(--text-muted);
+    }
+    .mode-btn.active .desc { color: #58a6ff88; }
+
+    /* --- Input / Output areas --- */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .section-meta { font-size: 11px; color: var(--text-muted); }
+
+    .input-area {
+      width: 100%;
+      height: 260px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      color: var(--text-primary);
+      font-size: 13px;
+      line-height: 1.7;
+      resize: vertical;
+    }
+
+    /* --- Process Button --- */
+    .process-btn {
+      width: 100%;
+      padding: 12px 20px;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      margin: 16px 0 24px;
+      transition: background 0.2s;
+    }
+    .process-btn:disabled {
+      background: var(--border);
+      color: var(--text-muted);
+      cursor: default;
+    }
+    .process-btn.loading {
+      background: linear-gradient(90deg, #1f6feb33, #1f6feb66, #1f6feb33);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite linear;
+      color: #fff;
+    }
+
+    /* --- Error --- */
+    .error-box {
+      padding: 12px 16px;
+      background: var(--error-bg);
+      border: 1px solid var(--error-border);
+      border-radius: 8px;
+      color: var(--error);
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    /* --- Output --- */
+    .output-box {
+      width: 100%;
+      min-height: 200px;
+      max-height: 500px;
+      overflow-y: auto;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      color: var(--text-primary);
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: var(--font-jp), var(--font-mono);
+    }
+
+    .copy-btn {
+      padding: 4px 12px;
+      background: var(--border);
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-family: var(--font-mono);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.copied {
+      background: var(--success-bg);
+      border-color: var(--success-border);
+      color: var(--success);
+    }
+
+    /* --- Preview --- */
+    .preview-box {
+      width: 100%;
+      min-height: 100px;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      color: var(--text-primary);
+      font-size: 15px;
+      line-height: 2.2;
+      font-family: var(--font-jp), sans-serif;
+      margin-top: 16px;
+    }
+    .preview-box rt { font-size: 0.6em; color: #58a6ff; }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-inner">
+      <span class="header-icon">振</span>
+      <div>
+        <h1>Furigana Tool</h1>
+        <p>Add & review ruby tags · Powered by Claude Sonnet</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- Worker URL Setup -->
+    <div class="setup-banner" id="setupBanner">
+      <label>Worker URL</label>
+      <div class="setup-row">
+        <input type="text" id="workerUrl" placeholder="https://your-worker-name.your-subdomain.workers.dev">
+        <button onclick="saveWorkerUrl()">Save</button>
+      </div>
+      <div class="setup-status" id="setupStatus"></div>
+    </div>
+
+    <!-- Mode Selector -->
+    <div class="modes" id="modeSelector"></div>
+
+    <!-- Input -->
+    <div>
+      <div class="section-header">
+        <span class="section-label" id="inputLabel">Input</span>
+        <span class="section-meta" id="inputMeta"></span>
+      </div>
+      <textarea class="input-area" id="inputArea" placeholder="Paste your content here..."></textarea>
+    </div>
+
+    <!-- Process Button -->
+    <button class="process-btn" id="processBtn" disabled onclick="processContent()">Add Ruby Tags</button>
+
+    <!-- Error -->
+    <div class="error-box" id="errorBox" style="display:none"></div>
+
+    <!-- Output -->
+    <div id="outputSection" style="display:none">
+      <div class="section-header">
+        <span class="section-label">Output</span>
+        <div style="display:flex; align-items:center; gap:12px">
+          <span class="section-meta" id="tokenInfo"></span>
+          <button class="copy-btn" id="copyBtn" onclick="copyOutput()">Copy</button>
+        </div>
+      </div>
+      <div class="output-box" id="outputBox"></div>
+
+      <div style="margin-top:16px">
+        <span class="section-label" style="display:block; margin-bottom:8px">Preview</span>
+        <div class="preview-box" id="previewBox"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ============================================================
+// State
+// ============================================================
+let currentMode = 'md-full';
+let workerUrl = localStorage.getItem('furigana_worker_url') || '';
+let outputText = '';
+
+const MODES = [
+  { id: 'md-full',   label: 'Markdown — Add Ruby',  desc: 'Add furigana ruby tags to all kanji',      icon: '📝' },
+  { id: 'html-full', label: 'HTML — Add Ruby',       desc: 'Add furigana ruby tags to all kanji',      icon: '🌐' },
+  { id: 'md-review', label: 'Markdown — Review',     desc: 'Review & correct existing ruby tags',      icon: '🔍' },
+  { id: 'html-review', label: 'HTML — Review',       desc: 'Review & correct existing ruby tags',      icon: '🔎' },
+];
+
+const SYSTEM_PROMPTS = {
+  "md-full": `You are a Japanese language expert. Add <ruby> furigana tags to ALL kanji in the provided Markdown content.
+
+Rules:
+- Wrap every kanji with <ruby>kanji<rt>reading</rt></ruby>
+- Use compound readings for jukujikun: 今日→<ruby>今日<rt>きょう</rt></ruby>, 昨日→<ruby>昨日<rt>きのう</rt></ruby>, 大人→<ruby>大人<rt>おとな</rt></ruby>
+- For mixed kanji+kana words, only wrap the kanji portions: 食べる→<ruby>食<rt>た</rt></ruby>べる
+- 私 should be read as わたし (not わたくし) unless explicitly in a very formal/keigo context
+- 君 should be read as きみ when used as a pronoun, くん only when used as a name suffix (〜君)
+- Choose readings based on context (e.g. 開く: あく for intransitive, ひらく for transitive)
+- DO NOT modify any existing ruby tags
+- DO NOT modify YAML front matter (between --- markers)
+- DO NOT modify content inside fenced code blocks or inline code
+- DO NOT modify Markdown link URLs
+- DO NOT modify HTML comments
+- Preserve ALL original formatting, structure, and content exactly
+- Output ONLY the processed content, no explanations`,
+
+  "html-full": `You are a Japanese language expert. Add <ruby> furigana tags to ALL kanji in the provided HTML content.
+
+Rules:
+- Wrap every kanji with <ruby>kanji<rt>reading</rt></ruby>
+- Use compound readings for jukujikun: 今日→<ruby>今日<rt>きょう</rt></ruby>, 昨日→<ruby>昨日<rt>きのう</rt></ruby>, 大人→<ruby>大人<rt>おとな</rt></ruby>
+- For mixed kanji+kana words, only wrap the kanji portions: 食べる→<ruby>食<rt>た</rt></ruby>べる
+- 私 should be read as わたし (not わたくし) unless explicitly in a very formal/keigo context
+- 君 should be read as きみ when used as a pronoun, くん only when used as a name suffix (〜君)
+- Choose readings based on context (e.g. 開く: あく for intransitive, ひらく for transitive)
+- DO NOT modify any existing ruby tags (both formats with and without <rp> tags)
+- DO NOT modify content inside <pre>, <code>, <script>, <style>, or <textarea> elements
+- DO NOT modify HTML comments
+- DO NOT modify HTML attributes or tag structure
+- Preserve ALL original formatting, structure, and content exactly
+- Output ONLY the processed content, no explanations`,
+
+  "md-review": `You are a Japanese language expert reviewing Markdown content that already has <ruby> furigana tags. Your job is to find and fix INCORRECT readings.
+
+Rules:
+- Check every existing <ruby>kanji<rt>reading</rt></ruby> tag for correctness
+- Fix incorrect readings based on context
+- Common errors to watch for:
+  - 私 tagged as わたくし should usually be わたし
+  - 君 tagged as くん should often be きみ (when used as pronoun)
+  - 開く readings (あく vs ひらく) based on transitive/intransitive context
+  - Compound words with wrong per-character readings that should be compound readings
+- Also add ruby tags to any kanji that were MISSED (not tagged at all)
+- DO NOT modify correctly-tagged kanji
+- DO NOT modify YAML front matter, code blocks, inline code, link URLs, or HTML comments
+- Preserve ALL original formatting, structure, and content exactly
+- Output ONLY the corrected content, no explanations`,
+
+  "html-review": `You are a Japanese language expert reviewing HTML content that already has <ruby> furigana tags. Your job is to find and fix INCORRECT readings.
+
+Rules:
+- Check every existing <ruby>kanji<rt>reading</rt></ruby> tag for correctness (both with and without <rp> tags)
+- Fix incorrect readings based on context
+- Common errors to watch for:
+  - 私 tagged as わたくし should usually be わたし
+  - 君 tagged as くん should often be きみ (when used as pronoun)
+  - 開く readings (あく vs ひらく) based on transitive/intransitive context
+  - Compound words with wrong per-character readings that should be compound readings
+- Also add ruby tags to any kanji that were MISSED (not tagged at all)
+- DO NOT modify correctly-tagged kanji
+- DO NOT modify content inside <pre>, <code>, <script>, <style>, or <textarea> elements
+- DO NOT modify HTML comments or attributes
+- Preserve ALL original formatting, structure, and content exactly
+- Output ONLY the corrected content, no explanations`,
+};
+
+// ============================================================
+// Init
+// ============================================================
+function init() {
+  renderModes();
+  updateSetupBanner();
+  updateButtonState();
+
+  const input = document.getElementById('inputArea');
+  input.addEventListener('input', () => {
+    const len = input.value.length;
+    document.getElementById('inputMeta').textContent = len > 0 ? `${len} chars` : '';
+    updateButtonState();
+  });
+}
+
+function renderModes() {
+  const container = document.getElementById('modeSelector');
+  container.innerHTML = MODES.map(m => `
+    <button class="mode-btn ${m.id === currentMode ? 'active' : ''}"
+            onclick="setMode('${m.id}')">
+      <div class="icon">${m.icon}</div>
+      <div class="label">${m.label}</div>
+      <div class="desc">${m.desc}</div>
+    </button>
+  `).join('');
+}
+
+function setMode(id) {
+  currentMode = id;
+  renderModes();
+  const isReview = id.includes('review');
+  document.getElementById('inputArea').placeholder = isReview
+    ? 'Paste content with existing ruby tags to review...'
+    : 'Paste your Markdown or HTML content here...';
+  document.getElementById('processBtn').textContent = isReview
+    ? 'Review & Correct'
+    : 'Add Ruby Tags';
+  document.getElementById('inputLabel').textContent = `Input · ${MODES.find(m => m.id === id).label}`;
+}
+
+// ============================================================
+// Worker URL
+// ============================================================
+function saveWorkerUrl() {
+  const input = document.getElementById('workerUrl');
+  let url = input.value.trim();
+  // Remove trailing slash
+  if (url.endsWith('/')) url = url.slice(0, -1);
+  workerUrl = url;
+  localStorage.setItem('furigana_worker_url', url);
+  updateSetupBanner();
+  updateButtonState();
+
+  if (url) {
+    const status = document.getElementById('setupStatus');
+    status.textContent = '✓ Saved';
+    status.className = 'setup-status ok';
+  }
+}
+
+function updateSetupBanner() {
+  const banner = document.getElementById('setupBanner');
+  const input = document.getElementById('workerUrl');
+  const status = document.getElementById('setupStatus');
+
+  input.value = workerUrl;
+
+  if (workerUrl) {
+    banner.className = 'setup-banner connected';
+    status.textContent = '✓ Connected';
+    status.className = 'setup-status ok';
+  } else {
+    banner.className = 'setup-banner';
+    status.textContent = 'Enter your Cloudflare Worker URL to get started';
+    status.className = 'setup-status';
+  }
+}
+
+function updateButtonState() {
+  const btn = document.getElementById('processBtn');
+  const hasInput = document.getElementById('inputArea').value.trim().length > 0;
+  btn.disabled = !workerUrl || !hasInput;
+}
+
+// ============================================================
+// Process
+// ============================================================
+async function processContent() {
+  const input = document.getElementById('inputArea').value.trim();
+  if (!input || !workerUrl) return;
+
+  const btn = document.getElementById('processBtn');
+  const errorBox = document.getElementById('errorBox');
+  const outputSection = document.getElementById('outputSection');
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.textContent = 'Processing...';
+  errorBox.style.display = 'none';
+  outputSection.style.display = 'none';
+
+  try {
+    const response = await fetch(workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 16000,
+        system: SYSTEM_PROMPTS[currentMode],
+        messages: [{ role: 'user', content: input }],
+      }),
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error.message || JSON.stringify(data.error));
+    }
+
+    outputText = (data.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('\n');
+
+    if (!outputText) throw new Error('No output returned from API');
+
+    // Show output
+    document.getElementById('outputBox').textContent = outputText;
+    document.getElementById('previewBox').innerHTML = outputText;
+    outputSection.style.display = 'block';
+
+    // Token info
+    if (data.usage) {
+      const total = (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0);
+      document.getElementById('tokenInfo').textContent = `${total.toLocaleString()} tokens`;
+    }
+
+  } catch (err) {
+    errorBox.textContent = err.message;
+    errorBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.textContent = currentMode.includes('review') ? 'Review & Correct' : 'Add Ruby Tags';
+    updateButtonState();
+  }
+}
+
+// ============================================================
+// Copy
+// ============================================================
+function copyOutput() {
+  if (!outputText) return;
+  navigator.clipboard.writeText(outputText);
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = '✓ Copied';
+  btn.classList.add('copied');
+  setTimeout(() => {
+    btn.textContent = 'Copy';
+    btn.classList.remove('copied');
+  }, 2000);
+}
+
+// ============================================================
+// Start
+// ============================================================
+init();
+</script>
+</body>
+</html>
