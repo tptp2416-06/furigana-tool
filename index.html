@@ -543,7 +543,7 @@ async function processContent() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 16000,
         system: SYSTEM_PROMPTS[currentMode],
         messages: [{ role: 'user', content: input }],
