@@ -194,6 +194,24 @@
     }
     .preview-box rt { font-size: 0.6em; color: #58a6ff; }
 
+    /* Corrections Summary */
+    .corrections-box {
+      margin-top: 16px; padding: 16px; border-radius: 8px;
+      font-size: 13px; line-height: 1.7;
+      font-family: var(--font-jp), var(--font-mono);
+      white-space: pre-wrap;
+    }
+    .corrections-box.has-changes {
+      background: var(--amber-bg); border: 1px solid var(--amber-border); color: var(--amber);
+    }
+    .corrections-box.no-changes {
+      background: var(--success-bg); border: 1px solid var(--success-border); color: var(--success);
+    }
+    .corrections-box .corrections-label {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; margin-bottom: 8px; display: block;
+    }
+
     /* History Section */
     .history-section { margin-top: 40px; border-top: 1px solid var(--border); padding-top: 24px; }
     .history-item {
@@ -288,6 +306,11 @@
         <span class="section-label" style="display:block; margin-bottom:8px">Preview</span>
         <div class="preview-box" id="previewBox"></div>
       </div>
+      <!-- Corrections Summary (review modes only) -->
+      <div class="corrections-box" id="correctionsBox" style="display:none">
+        <span class="corrections-label">Corrections Summary</span>
+        <span id="correctionsContent"></span>
+      </div>
     </div>
 
     <!-- History -->
@@ -370,7 +393,13 @@ Rules:
 - DO NOT modify correctly-tagged kanji
 - DO NOT modify YAML front matter, code blocks, inline code, link URLs, or HTML comments
 - Preserve ALL original formatting, structure, and content exactly
-- Output ONLY the corrected content, no explanations`,
+
+Output format:
+1. First, output the corrected content exactly
+2. Then add a separator line: ===CORRECTIONS===
+3. After the separator, list each correction as: original → corrected (reason)
+4. If any kanji were missing ruby tags, list them as: ADDED: kanji (reading)
+5. If there are NO corrections or additions needed, write: ===CORRECTIONS===\\nNo changes needed. All ruby tags are correct.`,
 
   "html-review": `You are a Japanese language expert reviewing HTML content that already has <ruby> furigana tags. Your job is to find and fix INCORRECT readings.
 
@@ -387,7 +416,13 @@ Rules:
 - DO NOT modify content inside <pre>, <code>, <script>, <style>, or <textarea> elements
 - DO NOT modify HTML comments or attributes
 - Preserve ALL original formatting, structure, and content exactly
-- Output ONLY the corrected content, no explanations`,
+
+Output format:
+1. First, output the corrected content exactly
+2. Then add a separator line: ===CORRECTIONS===
+3. After the separator, list each correction as: original → corrected (reason)
+4. If any kanji were missing ruby tags, list them as: ADDED: kanji (reading)
+5. If there are NO corrections or additions needed, write: ===CORRECTIONS===\\nNo changes needed. All ruby tags are correct.`,
 };
 
 // ============================================================
@@ -522,10 +557,32 @@ async function processContent() {
 
     if (!outputText) throw new Error('No output returned from API');
 
+    // Parse corrections summary if in review mode
+    let corrections = '';
+    const isReview = currentMode.includes('review');
+    const separator = '===CORRECTIONS===';
+
+    if (isReview && outputText.includes(separator)) {
+      const parts = outputText.split(separator);
+      outputText = parts[0].trimEnd();
+      corrections = parts[1].trim();
+    }
+
     // Show output
     document.getElementById('outputBox').textContent = outputText;
     document.getElementById('previewBox').innerHTML = outputText;
     outputSection.style.display = 'block';
+
+    // Show corrections summary
+    const correctionsBox = document.getElementById('correctionsBox');
+    if (isReview && corrections) {
+      const noChanges = corrections.toLowerCase().includes('no changes needed');
+      correctionsBox.className = 'corrections-box ' + (noChanges ? 'no-changes' : 'has-changes');
+      document.getElementById('correctionsContent').textContent = corrections;
+      correctionsBox.style.display = 'block';
+    } else {
+      correctionsBox.style.display = 'none';
+    }
 
     // Token info
     let totalTokens = 0;
