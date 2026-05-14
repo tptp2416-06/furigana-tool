@@ -272,6 +272,7 @@
         <button onclick="setModel('claude-sonnet-4-6')" id="btn-sonnet" class="active">Sonnet</button>
       </div>
       <span class="model-cost" id="modelCost">~$3 / $15 per MTok</span>
+      <span id="modelWarning" style="display:none; font-size:11px; color:var(--amber); margin-left:4px"></span>
     </div>
 
     <!-- Mode Selector -->
@@ -334,8 +335,8 @@ let outputText = '';
 let history = JSON.parse(localStorage.getItem('furigana_history') || '[]');
 
 const MODEL_INFO = {
-  'claude-haiku-4-5-20251001': { label: 'Haiku', cost: '~$1 / $5 per MTok', btnId: 'btn-haiku' },
-  'claude-sonnet-4-6': { label: 'Sonnet', cost: '~$3 / $15 per MTok', btnId: 'btn-sonnet' },
+  'claude-haiku-4-5-20251001': { label: 'Haiku', cost: '~$1 / $5 per MTok', btnId: 'btn-haiku', warning: 'Best for short snippets. May have issues with long documents.' },
+  'claude-sonnet-4-6': { label: 'Sonnet', cost: '~$3 / $15 per MTok', btnId: 'btn-sonnet', warning: '' },
 };
 
 const MODES = [
@@ -499,6 +500,9 @@ function updateModelToggle() {
   document.getElementById('btn-haiku').classList.toggle('active', currentModel === 'claude-haiku-4-5-20251001');
   document.getElementById('btn-sonnet').classList.toggle('active', currentModel === 'claude-sonnet-4-6');
   document.getElementById('modelCost').textContent = MODEL_INFO[currentModel]?.cost || '';
+  const warning = MODEL_INFO[currentModel]?.warning || '';
+  document.getElementById('modelWarning').textContent = warning;
+  document.getElementById('modelWarning').style.display = warning ? 'block' : 'none';
 }
 
 // ============================================================
