@@ -391,11 +391,12 @@ Rules:
   - Compound words with wrong per-character readings that should be compound readings
 - Also add ruby tags to any kanji that were MISSED (not tagged at all)
 - DO NOT modify correctly-tagged kanji
-- DO NOT modify YAML front matter, code blocks, inline code, link URLs, or HTML comments
+- DO NOT modify content inside code blocks, inline code, link URLs, or HTML comments
+- You MUST preserve YAML front matter (the block between --- markers) EXACTLY as-is and include it at the start of your output. Do NOT strip, modify, or omit it.
 - Preserve ALL original formatting, structure, and content exactly
 
 Output format:
-1. First, output the corrected content exactly
+1. First, output the COMPLETE corrected content starting from the YAML front matter (---)
 2. Then add a separator line: ===CORRECTIONS===
 3. After the separator, list each correction as: original → corrected (reason)
 4. If any kanji were missing ruby tags, list them as: ADDED: kanji (reading)
@@ -566,6 +567,29 @@ async function processContent() {
       const parts = outputText.split(separator);
       outputText = parts[0].trimEnd();
       corrections = parts[1].trim();
+    }
+
+    // For review modes, inject "reviewed" field into YAML front matter
+    if (isReview) {
+      const modelLabel = MODEL_INFO[currentModel]?.label || currentModel;
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      const reviewedLine = `reviewed: "${modelLabel} - Reviewed ${y}・${m}・${d}"`;
+
+      // Match front matter block
+      const fmMatch = outputText.match(/^---\n([\s\S]*?)\n---/);
+      if (fmMatch) {
+        let fmContent = fmMatch[1];
+        // Replace existing reviewed field or add new one
+        if (/^reviewed:/m.test(fmContent)) {
+          fmContent = fmContent.replace(/^reviewed:.*$/m, reviewedLine);
+        } else {
+          fmContent = fmContent.trimEnd() + '\n' + reviewedLine;
+        }
+        outputText = '---\n' + fmContent + '\n---' + outputText.slice(fmMatch[0].length);
+      }
     }
 
     // Show output
