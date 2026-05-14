@@ -348,40 +348,61 @@ const MODES = [
 const SYSTEM_PROMPTS = {
   "md-full": `You are a Japanese language expert. Add <ruby> furigana tags to ALL kanji in the provided Markdown content.
 
-Rules:
+CRITICAL RULES — PRESERVATION:
+- YAML front matter: Output the ENTIRE block between the opening --- and closing --- markers EXACTLY as-is, character for character. Do NOT add ruby tags inside front matter.
+- Line breaks: Preserve EVERY line break exactly. Each line in the input must appear on its own line in the output. Do NOT merge lines. Do NOT collapse headers onto other lines.
+- Markdown structure: Preserve all #, ##, ###, |, ---, !, [], (), >, !!!, and other Markdown syntax exactly as-is.
+- English text: Do NOT add ruby tags to English or romaji text. Only tag Japanese kanji.
+- Code blocks and inline code: Do NOT modify content inside fenced code blocks or inline code.
+- Link URLs: Do NOT modify URLs inside [text](url) or reference links.
+- HTML comments: Do NOT modify <!-- --> blocks.
+- Existing ruby tags: Do NOT modify any existing <ruby> tags.
+
+RUBY TAG RULES:
 - Wrap every kanji with <ruby>kanji<rt>reading</rt></ruby>
 - Use compound readings for jukujikun: 今日→<ruby>今日<rt>きょう</rt></ruby>, 昨日→<ruby>昨日<rt>きのう</rt></ruby>, 大人→<ruby>大人<rt>おとな</rt></ruby>
 - For mixed kanji+kana words, only wrap the kanji portions: 食べる→<ruby>食<rt>た</rt></ruby>べる
 - 私 should be read as わたし (not わたくし) unless explicitly in a very formal/keigo context
 - 君 should be read as きみ when used as a pronoun, くん only when used as a name suffix (〜君)
 - Choose readings based on context (e.g. 開く: あく for intransitive, ひらく for transitive)
-- DO NOT modify any existing ruby tags
-- DO NOT modify YAML front matter (between --- markers)
-- DO NOT modify content inside fenced code blocks or inline code
-- DO NOT modify Markdown link URLs
-- DO NOT modify HTML comments
-- Preserve ALL original formatting, structure, and content exactly
-- Output ONLY the processed content, no explanations`,
+- If a word is already written in kana (e.g. ください, ちょっと), leave it in kana. Do NOT convert kana to kanji.
+- Do NOT add ruby tags to single kana characters like お or ご when used as honorific prefixes — leave them as-is.
+
+Output ONLY the processed content. No explanations, no commentary.`,
 
   "html-full": `You are a Japanese language expert. Add <ruby> furigana tags to ALL kanji in the provided HTML content.
 
-Rules:
+CRITICAL RULES — PRESERVATION:
+- Line breaks: Preserve EVERY line break exactly. Do NOT merge or collapse lines.
+- HTML structure: Preserve all tags, attributes, and nesting exactly as-is.
+- English text: Do NOT add ruby tags to English or romaji text. Only tag Japanese kanji.
+- DO NOT modify content inside <pre>, <code>, <script>, <style>, or <textarea> elements.
+- DO NOT modify HTML comments.
+- DO NOT modify HTML attributes or tag structure.
+- DO NOT modify any existing <ruby> tags (both formats with and without <rp> tags).
+
+RUBY TAG RULES:
 - Wrap every kanji with <ruby>kanji<rt>reading</rt></ruby>
 - Use compound readings for jukujikun: 今日→<ruby>今日<rt>きょう</rt></ruby>, 昨日→<ruby>昨日<rt>きのう</rt></ruby>, 大人→<ruby>大人<rt>おとな</rt></ruby>
 - For mixed kanji+kana words, only wrap the kanji portions: 食べる→<ruby>食<rt>た</rt></ruby>べる
 - 私 should be read as わたし (not わたくし) unless explicitly in a very formal/keigo context
 - 君 should be read as きみ when used as a pronoun, くん only when used as a name suffix (〜君)
 - Choose readings based on context (e.g. 開く: あく for intransitive, ひらく for transitive)
-- DO NOT modify any existing ruby tags (both formats with and without <rp> tags)
-- DO NOT modify content inside <pre>, <code>, <script>, <style>, or <textarea> elements
-- DO NOT modify HTML comments
-- DO NOT modify HTML attributes or tag structure
-- Preserve ALL original formatting, structure, and content exactly
-- Output ONLY the processed content, no explanations`,
+- If a word is already written in kana (e.g. ください, ちょっと), leave it in kana. Do NOT convert kana to kanji.
+- Do NOT add ruby tags to single kana characters like お or ご when used as honorific prefixes — leave them as-is.
+
+Output ONLY the processed content. No explanations, no commentary.`,
 
   "md-review": `You are a Japanese language expert reviewing Markdown content that already has <ruby> furigana tags. Your job is to find and fix INCORRECT readings.
 
-Rules:
+CRITICAL RULES — PRESERVATION:
+- YAML front matter: You MUST include the ENTIRE block between the opening --- and closing --- markers EXACTLY as-is at the start of your output. Do NOT strip, modify, or omit it.
+- Line breaks: Preserve EVERY line break exactly. Each line in the input must appear on its own line in the output. Do NOT merge lines.
+- Markdown structure: Preserve all #, ##, ###, |, ---, !, [], (), >, !!!, and other Markdown syntax exactly.
+- DO NOT modify content inside code blocks, inline code, link URLs, or HTML comments.
+- If a word is already written in kana (e.g. ください), leave it in kana. Do NOT convert kana to kanji.
+
+REVIEW RULES:
 - Check every existing <ruby>kanji<rt>reading</rt></ruby> tag for correctness
 - Fix incorrect readings based on context
 - Common errors to watch for:
@@ -391,9 +412,6 @@ Rules:
   - Compound words with wrong per-character readings that should be compound readings
 - Also add ruby tags to any kanji that were MISSED (not tagged at all)
 - DO NOT modify correctly-tagged kanji
-- DO NOT modify content inside code blocks, inline code, link URLs, or HTML comments
-- You MUST preserve YAML front matter (the block between --- markers) EXACTLY as-is and include it at the start of your output. Do NOT strip, modify, or omit it.
-- Preserve ALL original formatting, structure, and content exactly
 
 Output format:
 1. First, output the COMPLETE corrected content starting from the YAML front matter (---)
@@ -404,7 +422,14 @@ Output format:
 
   "html-review": `You are a Japanese language expert reviewing HTML content that already has <ruby> furigana tags. Your job is to find and fix INCORRECT readings.
 
-Rules:
+CRITICAL RULES — PRESERVATION:
+- Line breaks: Preserve EVERY line break exactly. Do NOT merge or collapse lines.
+- HTML structure: Preserve all tags, attributes, and nesting exactly as-is.
+- DO NOT modify content inside <pre>, <code>, <script>, <style>, or <textarea> elements.
+- DO NOT modify HTML comments or attributes.
+- If a word is already written in kana (e.g. ください), leave it in kana. Do NOT convert kana to kanji.
+
+REVIEW RULES:
 - Check every existing <ruby>kanji<rt>reading</rt></ruby> tag for correctness (both with and without <rp> tags)
 - Fix incorrect readings based on context
 - Common errors to watch for:
@@ -414,12 +439,9 @@ Rules:
   - Compound words with wrong per-character readings that should be compound readings
 - Also add ruby tags to any kanji that were MISSED (not tagged at all)
 - DO NOT modify correctly-tagged kanji
-- DO NOT modify content inside <pre>, <code>, <script>, <style>, or <textarea> elements
-- DO NOT modify HTML comments or attributes
-- Preserve ALL original formatting, structure, and content exactly
 
 Output format:
-1. First, output the corrected content exactly
+1. First, output the COMPLETE corrected content exactly
 2. Then add a separator line: ===CORRECTIONS===
 3. After the separator, list each correction as: original → corrected (reason)
 4. If any kanji were missing ruby tags, list them as: ADDED: kanji (reading)
