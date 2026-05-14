@@ -349,13 +349,12 @@ const SYSTEM_PROMPTS = {
   "md-full": `You are a Japanese language expert. Add <ruby> furigana tags to ALL kanji in the provided Markdown content.
 
 CRITICAL RULES — PRESERVATION:
-- YAML front matter: Output the ENTIRE block between the opening --- and closing --- markers EXACTLY as-is, character for character. Do NOT add ruby tags inside front matter.
 - Line breaks: Preserve EVERY line break exactly. Each line in the input must appear on its own line in the output. Do NOT merge lines. Do NOT collapse headers onto other lines.
 - Markdown structure: Preserve all #, ##, ###, |, ---, !, [], (), >, !!!, and other Markdown syntax exactly as-is.
 - English text: Do NOT add ruby tags to English or romaji text. Only tag Japanese kanji.
 - Code blocks and inline code: Do NOT modify content inside fenced code blocks or inline code.
 - Link URLs: Do NOT modify URLs inside [text](url) or reference links.
-- HTML comments: Do NOT modify <!-- --> blocks.
+- HTML comments: Do NOT modify any HTML comment blocks.
 - Existing ruby tags: Do NOT modify any existing <ruby> tags.
 
 RUBY TAG RULES:
@@ -396,7 +395,6 @@ Output ONLY the processed content. No explanations, no commentary.`,
   "md-review": `You are a Japanese language expert reviewing Markdown content that already has <ruby> furigana tags. Your job is to find and fix INCORRECT readings.
 
 CRITICAL RULES — PRESERVATION:
-- YAML front matter: You MUST include the ENTIRE block between the opening --- and closing --- markers EXACTLY as-is at the start of your output. Do NOT strip, modify, or omit it.
 - Line breaks: Preserve EVERY line break exactly. Each line in the input must appear on its own line in the output. Do NOT merge lines.
 - Markdown structure: Preserve all #, ##, ###, |, ---, !, [], (), >, !!!, and other Markdown syntax exactly.
 - DO NOT modify content inside code blocks, inline code, link URLs, or HTML comments.
@@ -414,7 +412,7 @@ REVIEW RULES:
 - DO NOT modify correctly-tagged kanji
 
 Output format:
-1. First, output the COMPLETE corrected content starting from the YAML front matter (---)
+1. First, output the COMPLETE corrected content (do NOT include YAML front matter — it is handled separately)
 2. Then add a separator line: ===CORRECTIONS===
 3. After the separator, list each correction as: original → corrected (reason)
 4. If any kanji were missing ruby tags, list them as: ADDED: kanji (reading)
@@ -541,6 +539,16 @@ function updateButtonState() {
 // ============================================================
 // Process
 // ============================================================
+
+// Extract YAML front matter from content, return { frontMatter, body }
+function extractFrontMatter(text) {
+  const match = text.match(/^(---\n[\s\S]*?\n---)\n?([\s\S]*)$/);
+  if (match) {
+    return { frontMatter: match[1], body: match[2] };
+  }
+  return { frontMatter: '', body: text };
+}
+
 async function processContent() {
   const input = document.getElementById('inputArea').value.trim();
   if (!input || !workerUrl) return;
@@ -556,6 +564,11 @@ async function processContent() {
   outputSection.style.display = 'none';
 
   try {
+    // For Markdown modes, strip front matter before sending to API
+    const isMd = currentMode.startsWith('md-');
+    const { frontMatter, body } = isMd ? extractFrontMatter(input) : { frontMatter: '', body: input };
+    const contentToSend = isMd && frontMatter ? body : input;
+
     const response = await fetch(workerUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -563,7 +576,7 @@ async function processContent() {
         model: currentModel,
         max_tokens: 16000,
         system: SYSTEM_PROMPTS[currentMode],
-        messages: [{ role: 'user', content: input }],
+        messages: [{ role: 'user', content: contentToSend }],
       }),
     });
 
@@ -591,27 +604,42 @@ async function processContent() {
       corrections = parts[1].trim();
     }
 
-    // For review modes, inject "reviewed" field into YAML front matter
-    if (isReview) {
-      const modelLabel = MODEL_INFO[currentModel]?.label || currentModel;
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = String(now.getMonth() + 1).padStart(2, '0');
-      const d = String(now.getDate()).padStart(2, '0');
-      const reviewedLine = `reviewed: "${modelLabel} - Reviewed ${y}・${m}・${d}"`;
-
-      // Match front matter block
-      const fmMatch = outputText.match(/^---\n([\s\S]*?)\n---/);
-      if (fmMatch) {
-        let fmContent = fmMatch[1];
-        // Replace existing reviewed field or add new one
-        if (/^reviewed:/m.test(fmContent)) {
-          fmContent = fmContent.replace(/^reviewed:.*$/m, reviewedLine);
-        } else {
-          fmContent = fmContent.trimEnd() + '\n' + reviewedLine;
-        }
-        outputText = '---\n' + fmContent + '\n---' + outputText.slice(fmMatch[0].length);
+    // If the API output starts with front matter (model didn't follow instructions),
+    // strip it so we don't get a mangled version
+    if (isMd && frontMatter) {
+      const apiFm = outputText.match(/^---\n[\s\S]*?\n---\n?/);
+      if (apiFm) {
+        outputText = outputText.slice(apiFm[0].length);
       }
+    }
+
+    // Rebuild with original front matter for Markdown modes
+    if (isMd && frontMatter) {
+      let fmToUse = frontMatter;
+
+      // For review modes, inject "reviewed" field
+      if (isReview) {
+        const modelLabel = MODEL_INFO[currentModel]?.label || currentModel;
+        const now = new Date();
+        const y = now.getFullYear();
+        const m = String(now.getMonth() + 1).padStart(2, '0');
+        const d = String(now.getDate()).padStart(2, '0');
+        const reviewedLine = `reviewed: "${modelLabel} - Reviewed ${y}・${m}・${d}"`;
+
+        // Extract inner content of front matter
+        const fmInner = fmToUse.match(/^---\n([\s\S]*?)\n---$/);
+        if (fmInner) {
+          let fmContent = fmInner[1];
+          if (/^reviewed:/m.test(fmContent)) {
+            fmContent = fmContent.replace(/^reviewed:.*$/m, reviewedLine);
+          } else {
+            fmContent = fmContent.trimEnd() + '\n' + reviewedLine;
+          }
+          fmToUse = '---\n' + fmContent + '\n---';
+        }
+      }
+
+      outputText = fmToUse + '\n' + outputText;
     }
 
     // Show output
