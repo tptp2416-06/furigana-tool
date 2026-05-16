@@ -219,8 +219,15 @@ LITERAL ENGLISH: Word-order-faithful translation showing Japanese structure.
 THE GAP: 1–2 bullets for the ENTIRE dialogue covering:
 - Where standard English hides Japanese structure
 - Key pragmatic or cultural framing differences
+- Within each Gap bullet, wrap the key Japanese expression being discussed in <span class="jb">...</span> to highlight it. Include ruby tags on kanji inside the jb span.
 
 Do NOT do line-by-line Gap analysis.
+
+TRANSLATION FORMATTING:
+- Wrap each sub-heading label in <span class="label">...</span>
+- Example: <span class="label">Natural English:</span>
+- Example: <span class="label">Literal English:</span>
+- Example: <span class="label">The Gap:</span>
 
 ---
 
@@ -341,8 +348,8 @@ At the end of each speaker-line's final chunk, add a top-link:
 ## WRAPPER & HEADER
 
 Wrap the entire output in <div class="sb-wrap">...</div>.
-First child inside .sb-wrap must be the model header. Use the actual current date:
-<div class="claude-header">Claude Sonnet 4.6 · YYYY·MM·DD</div>
+First child inside .sb-wrap must be the model header with the placeholder DATE_PLACEHOLDER for the date:
+<div class="claude-header">Claude Sonnet 4.6 · DATE_PLACEHOLDER</div>
 
 ---
 
@@ -464,6 +471,13 @@ async function processDialogue() {
       .join('\n');
 
     if (!outputText) throw new Error('No output returned from API');
+
+    // Replace date placeholder with actual current date
+    const now = new Date();
+    const dateStr = now.getFullYear() + '\u00B7' + String(now.getMonth() + 1).padStart(2, '0') + '\u00B7' + String(now.getDate()).padStart(2, '0');
+    outputText = outputText.replace('DATE_PLACEHOLDER', dateStr);
+    // Also fix if model used its own date format
+    outputText = outputText.replace(/(\d{4})[·./-](\d{2})[·./-](\d{2})/, dateStr);
 
     document.getElementById('outputBox').textContent = outputText;
     outputSection.style.display = 'block';
