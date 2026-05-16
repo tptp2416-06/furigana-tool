@@ -101,7 +101,14 @@
 
     <!-- Cost -->
     <div style="margin-bottom:24px; display:flex; align-items:center; gap:12px">
-      <span class="model-cost">Sonnet · ~$0.15 per card</span>
+    <!-- Model Selector -->
+    <div style="margin-bottom:24px; display:flex; align-items:center; gap:12px">
+      <label class="section-label" for="modelSelect" style="margin:0">Model</label>
+      <select id="modelSelect" onchange="updateModelDisplay()" style="padding:8px 12px; background:var(--bg-input); border:1px solid var(--border); border-radius:6px; color:var(--text-primary); font-family:var(--font-mono); font-size:13px; cursor:pointer;">
+        <option value="claude-sonnet-4-6">Sonnet 4.6</option>
+        <option value="claude-opus-4-6">Opus 4.6</option>
+      </select>
+      <span class="model-cost" id="modelCost">~$3 / $15 per MTok</span>
     </div>
 
     <!-- Input: Data ID -->
@@ -389,9 +396,17 @@ let workerUrl = localStorage.getItem('furigana_worker_url') || '';
 let outputText = '';
 let history = JSON.parse(localStorage.getItem('dialogue_history') || '[]');
 let SYSTEM_PROMPT = '';
+let currentModel = localStorage.getItem('dialogue_model') || 'claude-sonnet-4-6';
+
+const MODEL_INFO = {
+  'claude-sonnet-4-6': { label: 'Sonnet 4.6', cost: '~$3 / $15 per MTok' },
+  'claude-opus-4-6': { label: 'Opus 4.6', cost: '~$15 / $75 per MTok' },
+};
 
 function init() {
   SYSTEM_PROMPT = document.getElementById('system-prompt-data').textContent;
+  document.getElementById('modelSelect').value = currentModel;
+  updateModelDisplay();
   updateSetupBanner();
   updateButtonState();
   renderHistory();
@@ -406,6 +421,12 @@ function saveWorkerUrl() {
   localStorage.setItem('furigana_worker_url', url);
   updateSetupBanner();
   updateButtonState();
+}
+
+function updateModelDisplay() {
+  currentModel = document.getElementById('modelSelect').value;
+  localStorage.setItem('dialogue_model', currentModel);
+  document.getElementById('modelCost').textContent = MODEL_INFO[currentModel]?.cost || '';
 }
 
 function updateSetupBanner() {
@@ -455,7 +476,7 @@ async function processDialogue() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: currentModel,
         max_tokens: 16000,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: userMessage }],
@@ -472,12 +493,32 @@ async function processDialogue() {
 
     if (!outputText) throw new Error('No output returned from API');
 
-    // Replace date placeholder with actual current date
+    // Fix date in claude-header to actual current date
     const now = new Date();
     const dateStr = now.getFullYear() + '\u00B7' + String(now.getMonth() + 1).padStart(2, '0') + '\u00B7' + String(now.getDate()).padStart(2, '0');
+    // Replace DATE_PLACEHOLDER if model used it
     outputText = outputText.replace('DATE_PLACEHOLDER', dateStr);
-    // Also fix if model used its own date format
-    outputText = outputText.replace(/(\d{4})[·./-](\d{2})[·./-](\d{2})/, dateStr);
+    // Replace any date in the claude-header line specifically
+    outputText = outputText.replace(
+      /(<div class="claude-header">.*?)\d{4}[·.\-\/]\d{2}[·.\-\/]\d{2}(.*?<\/div>)/,
+      '$1' + dateStr + '$2'
+    );
+    // Fix model name in header to match selected model
+    const modelLabel = MODEL_INFO[currentModel]?.label || 'Sonnet 4.6';
+    outputText = outputText.replace(
+      /(<div class="claude-header">)Claude[\s\w.]*/,
+      '$1Claude ' + modelLabel + ' \u00B7 '
+    );
+
+    // Post-processing: fix common model mistakes
+
+    // Remove empty ruby tags on English words (e.g., <ruby>Natural<rt></rt></ruby>)
+    outputText = outputText.replace(/<ruby>([A-Za-z\s]+)<rt><\/rt><\/ruby>/g, '$1');
+
+    // Ensure Translation sub-headings use <span class="label"> if model used <h3>
+    outputText = outputText.replace(/<h3>(Natural English)<\/h3>/g, '<span class="label">$1:</span>');
+    outputText = outputText.replace(/<h3>(Literal English)<\/h3>/g, '<span class="label">$1:</span>');
+    outputText = outputText.replace(/<h3>(The Gap)<\/h3>/g, '<span class="label">$1:</span>');
 
     document.getElementById('outputBox').textContent = outputText;
     outputSection.style.display = 'block';
@@ -488,7 +529,7 @@ async function processDialogue() {
       document.getElementById('tokenInfo').textContent = totalTokens.toLocaleString() + ' tokens';
     }
 
-    addToHistory({ dataId, output: outputText, tokens: totalTokens, timestamp: new Date().toISOString() });
+    addToHistory({ dataId, model: currentModel, output: outputText, tokens: totalTokens, timestamp: new Date().toISOString() });
 
   } catch (err) {
     errorBox.textContent = err.message;
