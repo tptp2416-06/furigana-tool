@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dialogue Notes Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg-primary: #0f1117; --bg-secondary: #161b22; --bg-input: #0d1117;
+      --border: #21262d; --border-active: #1f6feb;
+      --text-primary: #e6edf3; --text-secondary: #8b949e; --text-muted: #484f58;
+      --accent: #1f6feb; --accent-glow: #1f6feb15;
+      --error: #f85149; --error-bg: #da363415; --error-border: #da363444;
+      --success: #3fb950; --success-bg: #23862615; --success-border: #238636;
+      --amber: #d29922; --amber-bg: #d2992215; --amber-border: #d2992244;
+      --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
+      --font-jp: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+    }
+    body { min-height: 100vh; background: var(--bg-primary); color: var(--text-secondary); font-family: var(--font-mono); }
+    textarea:focus, button:focus-visible, input:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+    textarea::placeholder, input::placeholder { color: var(--text-muted); }
+    textarea, input { font-family: var(--font-jp), var(--font-mono); }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+    .header { border-bottom: 1px solid var(--border); padding: 20px 24px; background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%); }
+    .header-inner { max-width: 960px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+    .header h1 { font-size: 18px; font-weight: 600; color: var(--text-primary); letter-spacing: -0.02em; }
+    .header p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 24px 48px; }
+
+    .setup-banner { padding: 16px 20px; border: 1px solid var(--error-border); border-radius: 8px; margin-bottom: 24px; background: var(--error-bg); }
+    .setup-banner.connected { background: var(--success-bg); border-color: var(--success-border); }
+    .setup-banner label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 8px; }
+    .setup-row { display: flex; gap: 8px; }
+    .setup-row input { flex: 1; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; color: var(--text-primary); font-size: 13px; }
+    .setup-row button { padding: 8px 16px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 6px; color: var(--text-secondary); font-family: var(--font-mono); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .setup-row button:hover { border-color: var(--accent); color: var(--accent); }
+    .setup-status { font-size: 11px; margin-top: 8px; }
+    .setup-status.ok { color: var(--success); }
+
+    .section-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+    .section-meta { font-size: 11px; color: var(--text-muted); }
+
+    .input-group { margin-bottom: 16px; }
+    .input-group label { display: block; margin-bottom: 6px; }
+    .input-group input { width: 100%; padding: 10px 14px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 13px; }
+    .input-area { width: 100%; height: 180px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 16px; color: var(--text-primary); font-size: 13px; line-height: 1.7; resize: vertical; }
+    .notes-area { height: 60px; }
+
+    .process-btn { width: 100%; padding: 12px 20px; background: var(--accent); border: none; border-radius: 8px; color: #fff; font-size: 14px; font-weight: 600; font-family: var(--font-mono); cursor: pointer; margin: 16px 0 24px; transition: background 0.2s; }
+    .process-btn:disabled { background: var(--border); color: var(--text-muted); cursor: default; }
+    .process-btn.loading { background: linear-gradient(90deg, #1f6feb33, #1f6feb66, #1f6feb33); background-size: 200% 100%; animation: shimmer 1.5s infinite linear; color: #fff; }
+
+    .error-box { padding: 12px 16px; background: var(--error-bg); border: 1px solid var(--error-border); border-radius: 8px; color: var(--error); font-size: 13px; margin-bottom: 16px; }
+
+    .output-box { width: 100%; min-height: 200px; max-height: 600px; overflow-y: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 8px; padding: 16px; color: var(--text-primary); font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; font-family: var(--font-jp), var(--font-mono); }
+
+    .copy-btn { padding: 4px 12px; background: var(--border); border: 1px solid #30363d; border-radius: 6px; color: var(--text-secondary); font-size: 12px; font-family: var(--font-mono); cursor: pointer; transition: all 0.15s; }
+    .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .copy-btn.copied { background: var(--success-bg); border-color: var(--success-border); color: var(--success); }
+
+    .model-cost { font-size: 11px; color: var(--text-muted); padding: 4px 8px; background: var(--bg-secondary); border-radius: 4px; }
+
+    .history-section { margin-top: 40px; border-top: 1px solid var(--border); padding-top: 24px; }
+    .history-item { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 12px; }
+    .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    .history-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .history-tag { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .history-tag.id { background: var(--accent-glow); color: #58a6ff; border: 1px solid #1f6feb44; }
+    .history-tag.tokens { background: var(--amber-bg); color: var(--amber); border: 1px solid var(--amber-border); }
+    .history-time { font-size: 11px; color: var(--text-muted); }
+    .history-output { max-height: 150px; overflow-y: auto; background: var(--bg-input); border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-size: 12px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: var(--text-primary); font-family: var(--font-jp), var(--font-mono); }
+    .history-actions { display: flex; gap: 8px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-inner">
+      <span style="font-size:24px">🎭</span>
+      <div>
+        <h1>Dialogue Notes Generator</h1>
+        <p>Mini-dialogue Anki card notes · Powered by Claude Sonnet</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Worker URL -->
+    <div class="setup-banner" id="setupBanner">
+      <label>Worker URL</label>
+      <div class="setup-row">
+        <input type="text" id="workerUrl" placeholder="https://your-worker-name.your-subdomain.workers.dev">
+        <button onclick="saveWorkerUrl()">Save</button>
+      </div>
+      <div class="setup-status" id="setupStatus"></div>
+    </div>
+
+    <!-- Cost -->
+    <div style="margin-bottom:24px; display:flex; align-items:center; gap:12px">
+      <span class="model-cost">Sonnet · ~$0.15 per card</span>
+    </div>
+
+    <!-- Input: Data ID -->
+    <div class="input-group">
+      <label class="section-label">Data ID Prefix</label>
+      <input type="text" id="dataId" placeholder="d515-3-" value="">
+    </div>
+
+    <!-- Input: Dialogue -->
+    <div class="input-group">
+      <label class="section-label">Dialogue</label>
+      <textarea class="input-area" id="dialogueInput" placeholder="Paste your mini-dialogue here...
+
+Example:
+ねえ、そんなに落ち込まないでよ。
+うん……。でもさ、ちょっと楽しみにしてたからさ……。
+分かるよー。ほら、元気出して。今日は別の楽しいことしよ？"></textarea>
+    </div>
+
+    <!-- Input: Notes (optional overrides) -->
+    <div class="input-group">
+      <label class="section-label">Notes <span style="font-weight:400; color:var(--text-muted)">(optional — register override, context, etc.)</span></label>
+      <textarea class="input-area notes-area" id="notesInput" placeholder="e.g., Basic Polite register — flag any casual bleed."></textarea>
+    </div>
+
+    <!-- Process -->
+    <button class="process-btn" id="processBtn" disabled onclick="processDialogue()">Generate Notes</button>
+
+    <!-- Error -->
+    <div class="error-box" id="errorBox" style="display:none"></div>
+
+    <!-- Output -->
+    <div id="outputSection" style="display:none">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+        <span class="section-label">Output</span>
+        <div style="display:flex; align-items:center; gap:12px">
+          <span class="section-meta" id="tokenInfo"></span>
+          <button class="copy-btn" id="copyBtn" onclick="copyOutput()">Copy</button>
+        </div>
+      </div>
+      <div class="output-box" id="outputBox"></div>
+    </div>
+
+    <!-- History -->
+    <div class="history-section" id="historySection" style="display:none">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+        <span class="section-label">Recent Outputs</span>
+        <button class="copy-btn" onclick="clearHistory()">Clear</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+<!-- System prompt stored here to avoid backtick/template literal issues in JS -->
+<script type="text/plain" id="system-prompt-data">
+# Mini-Dialogue Anki Card Notes — System Prompt
+
+## ROLE & BEHAVIOR
+
+Role: Native Japanese tutor (Tokyo) with deep knowledge of grammar, idioms, pragmatics, and modern usage (2020s–2026).
+Level: Lower N3.
+Focus: Natural/colloquial spoken Japanese. Sentence-based immersion learning.
+Goal: Generate comprehensive Anki card notes in clean HTML for mini-dialogues.
+
+Output ONLY the raw HTML. No markdown code fences. No explanations before or after. Start directly with <div class="sb-wrap"> and end with </div>.
+
+---
+
+## CARD FORMAT
+
+Generate notes for each mini-dialogue using EXACTLY these three sections in order:
+
+1. 【Natural Upgrade Audit (2026 / 30s–40s)】
+2. 【Translation】
+3. 【Breakdown】
+
+---
+
+### NATURAL UPGRADE AUDIT
+
+CHECK:
+- Is the register consistent throughout?
+- Is the flow logical and natural?
+- Is the dialogue colloquial and NOT textbook-y or robotic?
+
+REGISTER DETECTION:
+- Casual (タメ口), Basic Polite (丁寧語), Mixed, or Other
+- Note any intentional register shifts and explain why they are meaningful
+
+VERDICT OPTIONS:
+- ✓ Already Natural — no changes needed
+- △ Minor Polish — word-order fix, particle drop, contraction
+- ✗ Needs Upgrade — vocabulary, register, conjugation issue
+
+UPGRADE RULES:
+- If upgrade involves ONLY dropped particles or contractions → apply upgrade silently, mark corrected dialogue as Primary Target
+- If upgrade involves vocabulary / particle choice / conjugation → provide suggestions only, do NOT auto-apply. Original remains Primary Target.
+
+OUTPUT FORMAT:
+<div class="upgrade-status">Register: ...</div>
+<div class="upgrade-status">Flow & Naturalness: ✓ / △ / ✗ ...</div>
+<div class="upgrade-why"><p class="ind">• ...</p></div>
+<div class="upgrade-status">Verdict: ✓ No changes needed / △ Corrected / ✗ Suggestions provided</div>
+
+---
+
+### TRANSLATION
+
+Three parts:
+
+NATURAL ENGLISH: Full flowing dialogue translation (not line-by-line).
+
+LITERAL ENGLISH: Word-order-faithful translation showing Japanese structure.
+
+THE GAP: 1–2 bullets for the ENTIRE dialogue covering:
+- Where standard English hides Japanese structure
+- Key pragmatic or cultural framing differences
+
+Do NOT do line-by-line Gap analysis.
+
+---
+
+### BREAKDOWN
+
+CHUNKING RULES:
+- Divide each line into functional learning chunks
+- A chunk = a phrase, clause, or set expression carrying a complete reusable meaning, grammar pattern, tone marker, or pragmatic move
+- Use PHRASE-LEVEL granularity — do NOT treat a full line as one chunk unless it is genuinely indivisible
+
+GRANULARITY PATTERN — apply consistently:
+- Fronted topics / scene-setters → own chunk
+- Time anchors and scope frames → own chunk
+- Degree/manner adverbs before a predicate → own chunk
+- Noun-modifying verb phrases with pedagogical weight → own chunk
+- The predicate / final clause → own chunk
+
+Granularity examples:
+さっきまであんなに疲れてたのに、
+→ 1. さっきまで   2. あんなに疲れてたのに、
+
+だいたいのこと許せそう
+→ 1. だいたいのこと   2. 許せそう
+
+今日はそんな奇跡に賭ける元気、ないんだよね……
+→ 1. 今日はそんな奇跡に   2. 賭ける元気、   3. ないんだよね……
+
+SEQUENCE: Present chunks in dialogue order.
+
+SKIP: N5-level vocabulary unless there is a meaningful disambiguation or cultural point. Skip re-entries of the same word unless it appears in a different meaning, form, or conjugation.
+
+ANCHOR CHUNK RULE:
+- Mark 3–5 especially reusable, high-value chunks per dialogue as Anchor Chunks
+- Use: <span class="anchor-label">Anchor Chunk</span>
+
+FOR EACH CHUNK, OUTPUT:
+<p class="m">
+  [optional: <span class="anchor-label">Anchor Chunk</span>]
+  <span class="chain-term">Japanese chunk</span>
+  <span class="grammar-label">(Structural grammar label)</span>
+  <span class="tone-label">Pragmatic / tone function label</span>
+</p>
+<span class="meta-info">[Grammar / conjugation / contraction / particle note — ONLY when needed. Always in square brackets.]</span>
+<span class="note-main">• Natural meaning in context.</span><br>
+<span class="note-sub">• Commentary bullet one.<br>
+• Commentary bullet two if needed.<br>
+• Commentary bullet three if needed.</span>
+
+NOTE-SUB FORMATTING:
+- No lead-in labels (no "Why this chunk matters:" etc.) — plain bullet points only
+- <br> between each bullet within the same note-sub block
+
+META-INFO FORMATTING:
+- Always wrap content in square brackets: [...]
+- Example: <span class="meta-info">[終わらせる = causative of 終わる. Ichidan. ないと = shortening of ないといけない.]</span>
+
+NOTE-CALLOUT RULE:
+- Include 2–3 <span class="note-callout">...</span> blocks per card total
+- Only on chunks that genuinely earn deeper treatment
+- Place directly after the chunk's note-sub block, before the next <hr>
+
+---
+
+## DIALOGUE SCRIPT (<h1>) RULES
+
+- Add id="dialogue-top" to the <h1> tag
+- Wrap each speaker label in <a class="spk-link" href="#bdwn-{id}">Speaker N:</a> linking to that line's breakdown badge
+- Refer to speakers as "Speaker 1", "Speaker 2", etc. — never A/B or other labels
+- Do NOT include a situation context header above the dialogue lines
+- Split each speaker line into clause-level chunks at: commas、ellipses……、dashes－、and sentence-ending punctuation。？！
+- Exception: Fillers (ねえ、なんか、あのさ、てっきり、etc.) attach to the following clause rather than standing alone
+- Wrap each chunk in <span class="jp-pop" data-id="{prefix}-{chunk}">...</span>
+- Use the card-specific data-id prefix provided in the prompt
+- Chunk IDs follow the pattern: d501-8-s1l1-a, d501-8-s1l1-b, d501-8-s2l1-a, etc.
+- Speaker line anchors follow the pattern: bdwn-s1l1, bdwn-s2l1, bdwn-s1l2, etc. Increment the line number per speaker separately (s1l1, s1l2, s1l3 / s2l1, s2l2, etc.)
+
+<h1> structure example:
+<h1 id="dialogue-top">
+  <a class="spk-link" href="#bdwn-s1l1">Speaker 1:</a>
+  <span class="jp-pop" data-id="d501-8-s1l1-a">chunk one</span><span class="jp-pop" data-id="d501-8-s1l1-b">chunk two</span><br>
+  <a class="spk-link" href="#bdwn-s2l1">Speaker 2:</a>
+  <span class="jp-pop" data-id="d501-8-s2l1-a">chunk one</span>
+</h1>
+
+---
+
+## HIDDEN POP-UP DATA BLOCKS
+
+Place immediately after </h1>, before the first <hr>. One .pop-data div per popup chunk.
+
+Each block contains:
+- .pop-label — "Speaker N · Line N"
+- .pop-trans — Translation of that clause only. No grammar notes.
+
+data-id must exactly match the corresponding .jp-pop span.
+
+Example:
+<div class="pop-data" data-id="d501-8-s1l1-a">
+  <div class="pop-label">Speaker 1 · Line 1</div>
+  <div class="pop-trans">Hey, that's not what I meant at all.</div>
+</div>
+
+---
+
+## BREAKDOWN LINE BADGES
+
+Each speaker-line in the Breakdown starts with a badge:
+<div class="bdwn-line-badge" id="bdwn-{id}">
+  <span class="bdwn-spk">Speaker N</span><span class="bdwn-ln">Line N</span>
+</div>
+
+At the end of each speaker-line's final chunk, add a top-link:
+<p class="ind"><a class="top-link" href="#dialogue-top">↑ Top</a></p>
+<hr>
+
+---
+
+## WRAPPER & HEADER
+
+Wrap the entire output in <div class="sb-wrap">...</div>.
+First child inside .sb-wrap must be the model header. Use the actual current date:
+<div class="claude-header">Claude Sonnet 4.6 · YYYY·MM·DD</div>
+
+---
+
+## RUBY TAG RULES — ABSOLUTE
+
+Every kanji anywhere in the HTML output — in h1, popup data, note-main, note-sub, note-callout, meta-info, jb spans, grammar labels, alternative forms — must have <ruby> + <rt> tags. No bare kanji anywhere. No parenthetical readings. No exceptions.
+
+---
+
+## ADDITIONAL RULES
+
+Speaker labeling: Always "Speaker 1", "Speaker 2", etc. — never A/B or other labels.
+
+No situation context in h1: No scene description or situation header above the dialogue lines.
+
+Popup chunks vs. breakdown chunks:
+- Popup chunks (.jp-pop in <h1>) = clause-level listening units, split at natural spoken boundaries
+- Breakdown chunks = finer phrase-level pedagogical granularity
+- These are intentionally different — popups are coarser; breakdown is finer
+
+Anchor Chunks: 3–5 per card. Mark with <span class="anchor-label">Anchor Chunk</span> on the same <p class="m"> line before .chain-term
+
+note-sub formatting: No lead-in labels. Plain • bullets only. <br> between bullets.
+
+meta-info brackets: Always wrap content in [ ] square brackets.
+
+note-callout: 2–3 per card maximum.
+
+Deliberate register mixing: If a dialogue intentionally uses polite/keigo as a comic device within a casual conversation, note it in the Audit as intentional and do NOT correct it.
+
+No romaji unless explicitly requested.
+</script>
+
+<script>
+// State
+let workerUrl = localStorage.getItem('furigana_worker_url') || '';
+let outputText = '';
+let history = JSON.parse(localStorage.getItem('dialogue_history') || '[]');
+let SYSTEM_PROMPT = '';
+
+function init() {
+  SYSTEM_PROMPT = document.getElementById('system-prompt-data').textContent;
+  updateSetupBanner();
+  updateButtonState();
+  renderHistory();
+  document.getElementById('dialogueInput').addEventListener('input', updateButtonState);
+  document.getElementById('dataId').addEventListener('input', updateButtonState);
+}
+
+function saveWorkerUrl() {
+  let url = document.getElementById('workerUrl').value.trim();
+  if (url.endsWith('/')) url = url.slice(0, -1);
+  workerUrl = url;
+  localStorage.setItem('furigana_worker_url', url);
+  updateSetupBanner();
+  updateButtonState();
+}
+
+function updateSetupBanner() {
+  document.getElementById('workerUrl').value = workerUrl;
+  const banner = document.getElementById('setupBanner');
+  const status = document.getElementById('setupStatus');
+  if (workerUrl) {
+    banner.className = 'setup-banner connected';
+    status.textContent = '\u2713 Connected';
+    status.className = 'setup-status ok';
+  } else {
+    banner.className = 'setup-banner';
+    status.textContent = 'Enter your Cloudflare Worker URL to get started';
+    status.className = 'setup-status';
+  }
+}
+
+function updateButtonState() {
+  const hasDialogue = document.getElementById('dialogueInput').value.trim().length > 0;
+  const hasId = document.getElementById('dataId').value.trim().length > 0;
+  document.getElementById('processBtn').disabled = !workerUrl || !hasDialogue || !hasId;
+}
+
+async function processDialogue() {
+  const dialogue = document.getElementById('dialogueInput').value.trim();
+  const dataId = document.getElementById('dataId').value.trim();
+  const notes = document.getElementById('notesInput').value.trim();
+  if (!dialogue || !dataId || !workerUrl) return;
+
+  const btn = document.getElementById('processBtn');
+  const errorBox = document.getElementById('errorBox');
+  const outputSection = document.getElementById('outputSection');
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  btn.textContent = 'Generating...';
+  errorBox.style.display = 'none';
+  outputSection.style.display = 'none';
+
+  try {
+    let userMessage = 'Mini-dialogue card:\n' + dialogue + '\nData-id: ' + dataId;
+    if (notes) {
+      userMessage += '\nNote: ' + notes;
+    }
+
+    const response = await fetch(workerUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 16000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userMessage }],
+      }),
+    });
+
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+    outputText = (data.content || [])
+      .filter(b => b.type === 'text')
+      .map(b => b.text)
+      .join('\n');
+
+    if (!outputText) throw new Error('No output returned from API');
+
+    document.getElementById('outputBox').textContent = outputText;
+    outputSection.style.display = 'block';
+
+    let totalTokens = 0;
+    if (data.usage) {
+      totalTokens = (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0);
+      document.getElementById('tokenInfo').textContent = totalTokens.toLocaleString() + ' tokens';
+    }
+
+    addToHistory({ dataId, output: outputText, tokens: totalTokens, timestamp: new Date().toISOString() });
+
+  } catch (err) {
+    errorBox.textContent = err.message;
+    errorBox.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    btn.textContent = 'Generate Notes';
+    updateButtonState();
+  }
+}
+
+function copyOutput() {
+  if (!outputText) return;
+  navigator.clipboard.writeText(outputText);
+  const btn = document.getElementById('copyBtn');
+  btn.textContent = '\u2713 Copied';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+}
+
+function addToHistory(entry) {
+  history.unshift(entry);
+  if (history.length > 2) history = history.slice(0, 2);
+  localStorage.setItem('dialogue_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function clearHistory() {
+  history = [];
+  localStorage.setItem('dialogue_history', '[]');
+  renderHistory();
+}
+
+function copyHistoryItem(index) {
+  if (!history[index]) return;
+  navigator.clipboard.writeText(history[index].output);
+  const btn = document.getElementById('histCopy' + index);
+  btn.textContent = '\u2713 Copied';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+}
+
+function renderHistory() {
+  const section = document.getElementById('historySection');
+  const list = document.getElementById('historyList');
+  if (history.length === 0) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = history.map((h, i) => {
+    const time = new Date(h.timestamp);
+    const timeStr = time.toLocaleDateString() + ' ' + time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const preview = h.output.substring(0, 200).replace(/</g, '&lt;') + (h.output.length > 200 ? '...' : '');
+    return '<div class="history-item">' +
+      '<div class="history-header">' +
+        '<div class="history-meta">' +
+          '<span class="history-tag id">' + (h.dataId || 'unknown') + '</span>' +
+          (h.tokens ? '<span class="history-tag tokens">' + h.tokens.toLocaleString() + ' tokens</span>' : '') +
+        '</div>' +
+        '<span class="history-time">' + timeStr + '</span>' +
+      '</div>' +
+      '<div class="history-output">' + preview + '</div>' +
+      '<div class="history-actions">' +
+        '<button class="copy-btn" id="histCopy' + i + '" onclick="copyHistoryItem(' + i + ')">Copy</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+init();
+</script>
+
+</body>
+</html>
