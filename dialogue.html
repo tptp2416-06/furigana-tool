@@ -135,6 +135,9 @@ Example:
     <!-- Process -->
     <button class="process-btn" id="processBtn" disabled onclick="processDialogue()">Generate Notes</button>
 
+    <!-- Pass Status -->
+    <div id="passStatus" style="display:none; font-size:12px; color:var(--text-secondary); margin:-16px 0 16px; padding:8px 12px; background:var(--bg-secondary); border:1px solid var(--border); border-radius:6px; font-family:var(--font-mono)"></div>
+
     <!-- Error -->
     <div class="error-box" id="errorBox" style="display:none"></div>
 
@@ -217,9 +220,22 @@ OUTPUT FORMAT:
 
 Three parts:
 
-NATURAL ENGLISH: Full flowing dialogue translation (not line-by-line).
+NATURAL ENGLISH: Translate each speaker's line naturally. MUST follow this exact format:
+- One speaker per line, labeled "Speaker N:"
+- Separate lines with <br> inside a single <p> tag
+- Do NOT combine all lines into one sentence with slashes
+- Do NOT use quotation marks around each speaker's line
 
-LITERAL ENGLISH: Word-order-faithful translation showing Japanese structure.
+Required format:
+<p>Speaker 1: Hey! What are you up to?<br>
+Speaker 2: It's raining, so I'm just hanging out at home. What about you?<br>
+Speaker 1: I was thinking about going shopping, but I gave up — now I've got nothing to do.<br>
+Speaker 2: Then come over! Let's play some games or something.</p>
+
+WRONG format (do NOT do this):
+"Hey! What are you up to?" / "It's raining..." / "I was thinking..."
+
+LITERAL ENGLISH: Same Speaker N: format as Natural English, but word-order-faithful showing Japanese structure.
 
 THE GAP: 1–2 bullets for the ENTIRE dialogue covering:
 - Where standard English hides Japanese structure
@@ -386,6 +402,100 @@ note-callout: 2–3 per card maximum.
 Deliberate register mixing: If a dialogue intentionally uses polite/keigo as a comic device within a casual conversation, note it in the Audit as intentional and do NOT correct it.
 
 No romaji unless explicitly requested.
+
+---
+
+## REFERENCE EXAMPLE (TRIMMED)
+
+This shows the expected structure and formatting. Follow this pattern exactly.
+
+INPUT DIALOGUE:
+ねえ、そんなに落ち込まないでよ。
+うん……。でもさ、ちょっと楽しみにしてたからさ……。
+分かるよー。ほら、元気出して。今日は別の楽しいことしよ？
+
+Data-id: d515-3-
+
+EXPECTED OUTPUT:
+
+<div class="sb-wrap">
+<div class="claude-header">Claude Sonnet 4.6 · DATE_PLACEHOLDER</div>
+
+<h1 id="dialogue-top">
+  <a class="spk-link" href="#bdwn-s1l1">Speaker 1:</a>
+  <span class="jp-pop" data-id="d515-3-s1l1-a">ねえ、そんなに<ruby>落<rt>お</rt></ruby>ち<ruby>込<rt>こ</rt></ruby>まないでよ。</span><br>
+  <a class="spk-link" href="#bdwn-s2l1">Speaker 2:</a>
+  <span class="jp-pop" data-id="d515-3-s2l1-a">うん……。</span><span class="jp-pop" data-id="d515-3-s2l1-b">でもさ、ちょっと<ruby>楽<rt>たの</rt></ruby>しみにしてたからさ……。</span><br>
+  <a class="spk-link" href="#bdwn-s1l2">Speaker 1:</a>
+  <span class="jp-pop" data-id="d515-3-s1l2-a"><ruby>分<rt>わ</rt></ruby>かるよー。</span><span class="jp-pop" data-id="d515-3-s1l2-b">ほら、<ruby>元気<rt>げんき</rt></ruby><ruby>出<rt>だ</rt></ruby>して。</span><span class="jp-pop" data-id="d515-3-s1l2-c"><ruby>今日<rt>きょう</rt></ruby>は<ruby>別<rt>べつ</rt></ruby>の<ruby>楽<rt>たの</rt></ruby>しいことしよ？</span>
+</h1>
+
+<div class="pop-data" data-id="d515-3-s1l1-a">
+  <div class="pop-label">Speaker 1 · Line 1</div>
+  <div class="pop-trans">Hey, don't be so down about it.</div>
+</div>
+<div class="pop-data" data-id="d515-3-s2l1-a">
+  <div class="pop-label">Speaker 2 · Line 1</div>
+  <div class="pop-trans">Yeah…</div>
+</div>
+<div class="pop-data" data-id="d515-3-s2l1-b">
+  <div class="pop-label">Speaker 2 · Line 1</div>
+  <div class="pop-trans">but I was kind of looking forward to it…</div>
+</div>
+
+<hr>
+
+<h2>【Natural Upgrade Audit (2026 / 30s–40s)】</h2>
+<div class="upgrade-status">Register: Casual (タメ<ruby>口<rt>ぐち</rt></ruby>) — close friends, one comforting the other.</div>
+<div class="upgrade-status">Flow &amp; Naturalness: ✓ Natural throughout.</div>
+<div class="upgrade-why">
+  <p class="ind">• <span class="jb">そんなに<ruby>落<rt>お</rt></ruby>ち<ruby>込<rt>こ</rt></ruby>まないでよ</span>, <span class="jb"><ruby>元気<rt>げんき</rt></ruby><ruby>出<rt>だ</rt></ruby>して</span> — natural 2026 casual adult speech.</p>
+</div>
+<div class="upgrade-status">Verdict: ✓ No changes needed.</div>
+
+<hr>
+
+<h2>【Translation】</h2>
+<span class="label">Natural English:</span>
+<p>Speaker 1: Hey, don't be so down about it.<br>
+Speaker 2: Yeah… but I was kind of looking forward to it…<br>
+Speaker 1: I know~ Come on, cheer up. Let's do something fun today instead?</p>
+
+<span class="label">Literal English:</span>
+<p>Speaker 1: Hey, that-much don't-be-depressed [I tell you].<br>
+Speaker 2: Yeah… But you-know, a-little was-looking-forward-to because you-know…<br>
+Speaker 1: [I] understand~ Look, energy put-out. Today-[as-for] different fun-thing let's-do?</p>
+
+<span class="label">The Gap:</span>
+<p class="ind">• <span class="jb"><ruby>元気<rt>げんき</rt></ruby><ruby>出<rt>だ</rt></ruby>して</span> — Japanese treats cheer as something you physically produce (<ruby>出<rt>だ</rt></ruby>す = to put out). English "cheer up" is vague about the mechanism; Japanese makes the speaker an active agent generating energy.</p>
+
+<hr>
+
+<h2>【Breakdown】</h2>
+
+<div class="bdwn-line-badge" id="bdwn-s1l1">
+  <span class="bdwn-spk">Speaker 1</span><span class="bdwn-ln">Line 1</span>
+</div>
+
+<p class="m">
+  <span class="anchor-label">Anchor Chunk</span>
+  <span class="chain-term">そんなに<ruby>落<rt>お</rt></ruby>ち<ruby>込<rt>こ</rt></ruby>まないでよ</span>
+  <span class="grammar-label">(Degree Adverb + Verb ないで + よ)</span>
+  <span class="tone-label">Gentle scolding / emotional nudge</span>
+</p>
+<span class="meta-info">[そんなに = to that degree / that much. <ruby>落<rt>お</rt></ruby>ち<ruby>込<rt>こ</rt></ruby>む = godan, to feel down / get depressed. ないで = negative te-form request ("don't"). よ = softening sentence-ender adding warmth.]</span>
+<span class="note-main">• "Hey, don't be so down about it." — warm, gently chiding.</span><br>
+<span class="note-sub">• そんなに calibrates the request — not "don't be sad" but "don't be THAT sad." It acknowledges the feeling while nudging Speaker 2 to ease up.<br>
+• ないでよ is softer than ないで alone or な (blunt prohibition). The よ makes it warm rather than commanding.</span>
+
+<p class="ind"><a class="top-link" href="#dialogue-top">↑ Top</a></p>
+<hr>
+
+[... remaining breakdown chunks follow same pattern ...]
+
+</div>
+
+END OF REFERENCE EXAMPLE.
 </script>
 
 <script>
@@ -448,6 +558,60 @@ function updateButtonState() {
   document.getElementById('processBtn').disabled = !workerUrl || !hasDialogue || !hasId;
 }
 
+async function callAPI(systemPrompt, userMessage) {
+  const response = await fetch(workerUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: currentModel,
+      max_tokens: 16000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }],
+    }),
+  });
+
+  const data = await response.json();
+  if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+
+  const text = (data.content || [])
+    .filter(b => b.type === 'text')
+    .map(b => b.text)
+    .join('\n');
+
+  if (!text) throw new Error('No output returned from API');
+
+  const tokens = data.usage
+    ? (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0)
+    : 0;
+
+  return { text, tokens };
+}
+
+const PASS2_PROMPT = [
+  'You are a Japanese language expert performing a final quality pass on Anki card HTML.',
+  '',
+  'Your tasks:',
+  '',
+  '1. RUBY TAGS: Add <ruby>kanji<rt>reading</rt></ruby> tags to EVERY kanji that does not already have them. Check everywhere: h1, h2, pop-data, note-main, note-sub, note-callout, meta-info, chain-term, upgrade-why, upgrade-status, label spans, jb spans. No bare kanji anywhere.',
+  '   - Use compound readings for jukujikun: 今日→きょう, 昨日→きのう, 大人→おとな',
+  '   - For mixed kanji+kana words, only wrap the kanji: 食べる→<ruby>食<rt>た</rt></ruby>べる',
+  '   - 私 = わたし (not わたくし unless explicitly keigo context)',
+  '   - 君 = きみ as pronoun, くん only as name suffix',
+  '   - Choose readings based on context (開く: あく intransitive, ひらく transitive)',
+  '   - Do NOT add ruby tags to English words or kana-only text',
+  '   - Do NOT modify existing correct ruby tags',
+  '',
+  '2. QC FIXES:',
+  '   - Remove any ruby tags wrapping English words (e.g., <ruby>Natural<rt></rt></ruby> → Natural)',
+  '   - Ensure Translation sub-headings use <span class="label">Natural English:</span> format (not <h3>)',
+  '   - Ensure The Gap section has <span class="jb">...</span> around key Japanese expressions being discussed',
+  '   - Ensure translation lines use Speaker N: format with <br> between lines (not slash-separated)',
+  '   - Verify all data-id attributes are consistent between jp-pop spans and pop-data divs',
+  '   - Do NOT change the content, meaning, or commentary — only fix formatting and add ruby tags',
+  '',
+  'Output ONLY the corrected HTML. No explanations, no commentary.'
+].join('\n');
+
 async function processDialogue() {
   const dialogue = document.getElementById('dialogueInput').value.trim();
   const dataId = document.getElementById('dataId').value.trim();
@@ -457,81 +621,70 @@ async function processDialogue() {
   const btn = document.getElementById('processBtn');
   const errorBox = document.getElementById('errorBox');
   const outputSection = document.getElementById('outputSection');
+  const statusEl = document.getElementById('passStatus');
 
   btn.disabled = true;
   btn.classList.add('loading');
-  btn.textContent = 'Generating...';
   errorBox.style.display = 'none';
   outputSection.style.display = 'none';
+  statusEl.style.display = 'block';
+
+  let totalTokens = 0;
 
   try {
+    // ── PASS 1: Content + Formatting ──
+    btn.textContent = 'Pass 1/2 — Generating content...';
+    statusEl.textContent = 'Pass 1 of 2: Generating dialogue notes...';
+
     let userMessage = 'Mini-dialogue card:\n' + dialogue + '\nData-id: ' + dataId;
-    if (notes) {
-      userMessage += '\nNote: ' + notes;
-    }
+    if (notes) userMessage += '\nNote: ' + notes;
 
-    const response = await fetch(workerUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: currentModel,
-        max_tokens: 16000,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userMessage }],
-      }),
-    });
+    const pass1 = await callAPI(SYSTEM_PROMPT, userMessage);
+    totalTokens += pass1.tokens;
 
-    const data = await response.json();
-    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+    statusEl.textContent = 'Pass 1 complete (' + pass1.tokens.toLocaleString() + ' tokens). Starting Pass 2...';
 
-    outputText = (data.content || [])
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('\n');
+    // ── PASS 2: Ruby tags + QC ──
+    btn.textContent = 'Pass 2/2 — Adding ruby tags & QC...';
+    statusEl.textContent = 'Pass 2 of 2: Adding ruby tags and quality check...';
 
-    if (!outputText) throw new Error('No output returned from API');
+    const pass2 = await callAPI(PASS2_PROMPT, pass1.text);
+    totalTokens += pass2.tokens;
 
-    // Fix date in claude-header to actual current date
+    outputText = pass2.text;
+
+    // ── Post-processing (code-level fixes) ──
+
+    // Fix claude-header: correct model name and date
     const now = new Date();
     const dateStr = now.getFullYear() + '\u00B7' + String(now.getMonth() + 1).padStart(2, '0') + '\u00B7' + String(now.getDate()).padStart(2, '0');
-    // Replace DATE_PLACEHOLDER if model used it
-    outputText = outputText.replace('DATE_PLACEHOLDER', dateStr);
-    // Replace any date in the claude-header line specifically
-    outputText = outputText.replace(
-      /(<div class="claude-header">.*?)\d{4}[·.\-\/]\d{2}[·.\-\/]\d{2}(.*?<\/div>)/,
-      '$1' + dateStr + '$2'
-    );
-    // Fix model name in header to match selected model
     const modelLabel = MODEL_INFO[currentModel]?.label || 'Sonnet 4.6';
     outputText = outputText.replace(
-      /(<div class="claude-header">)Claude[\s\w.]*/,
-      '$1Claude ' + modelLabel + ' \u00B7 '
+      /<div class="claude-header">.*?<\/div>/,
+      '<div class="claude-header">Claude ' + modelLabel + ' \u00B7 ' + dateStr + '</div>'
     );
 
-    // Post-processing: fix common model mistakes
-
-    // Remove empty ruby tags on English words (e.g., <ruby>Natural<rt></rt></ruby>)
+    // Remove empty ruby tags on English words
     outputText = outputText.replace(/<ruby>([A-Za-z\s]+)<rt><\/rt><\/ruby>/g, '$1');
 
-    // Ensure Translation sub-headings use <span class="label"> if model used <h3>
+    // Ensure Translation sub-headings use label spans if model used h3
     outputText = outputText.replace(/<h3>(Natural English)<\/h3>/g, '<span class="label">$1:</span>');
     outputText = outputText.replace(/<h3>(Literal English)<\/h3>/g, '<span class="label">$1:</span>');
     outputText = outputText.replace(/<h3>(The Gap)<\/h3>/g, '<span class="label">$1:</span>');
 
+    // Display output
     document.getElementById('outputBox').textContent = outputText;
     outputSection.style.display = 'block';
+    document.getElementById('tokenInfo').textContent = totalTokens.toLocaleString() + ' tokens (2 passes)';
 
-    let totalTokens = 0;
-    if (data.usage) {
-      totalTokens = (data.usage.input_tokens || 0) + (data.usage.output_tokens || 0);
-      document.getElementById('tokenInfo').textContent = totalTokens.toLocaleString() + ' tokens';
-    }
+    statusEl.textContent = 'Done — Pass 1: ' + pass1.tokens.toLocaleString() + ' + Pass 2: ' + pass2.tokens.toLocaleString() + ' = ' + totalTokens.toLocaleString() + ' total tokens';
 
     addToHistory({ dataId, model: currentModel, output: outputText, tokens: totalTokens, timestamp: new Date().toISOString() });
 
   } catch (err) {
     errorBox.textContent = err.message;
     errorBox.style.display = 'block';
+    statusEl.style.display = 'none';
   } finally {
     btn.disabled = false;
     btn.classList.remove('loading');
